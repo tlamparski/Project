@@ -1,0 +1,142 @@
+---
+title: "Lab 10"
+author: "Toni Lamparski"
+date: "2024-03-27"
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: united
+    highlight: tango
+bibliography: references.bib
+---
+
+# Loading Library and Downloading Data
+
+```{r}
+library(tidyverse)
+library(plotly) 
+library(knitr) 
+library(DT)
+```
+
+```{r}
+NEON_MAGs <- read_csv("data/NEON/GOLD_Study_ID_Gs0161344_NEON_edArchaea.csv") %>% 
+  # remove columns that are not needed for data analysis
+  select(-c(`GOLD Study ID`, `Bin Methods`, `Created By`, `Date Added`)) %>% 
+  # create a new column with the Assembly Type
+  mutate("Assembly Type" = case_when(`Genome Name` == "NEON combined assembly" ~ `Genome Name`,
+                            TRUE ~ "Individual")) %>% 
+  mutate_at("Assembly Type", str_replace, "NEON combined assembly", "Combined") %>% 
+  separate(`GTDB-Tk Taxonomy Lineage`, c("Domain", "Phylum", "Class", "Order", "Family", "Genus"), "; ", remove = FALSE) %>% 
+  # Get rid of the the common string "Soil microbial communities from "
+  mutate_at("Genome Name", str_replace, "Terrestrial soil microbial communities from ", "") %>% 
+  # Use the first `-` to split the column in two
+  separate(`Genome Name`, c("Site","Sample Name"), " - ") %>% 
+  # Get rid of the the common string "S-comp-1"
+  mutate_at("Sample Name", str_replace, "-comp-1", "") %>%
+  # separate the Sample Name into Site ID and plot info
+  separate(`Sample Name`, c("Site ID","subplot.layer.date"), "_", remove = FALSE,) %>% 
+  # separate the plot info into 3 columns
+  separate(`subplot.layer.date`, c("Subplot", "Layer", "Date"), "-") 
+```
+
+```{r}
+kable(
+project_groups <- read_csv("data/NEON/project_groups.csv") 
+)
+```
+
+# Description of NEON Site
+
+Great Basin, Onaqui, Utah, USA This NEON field site is located in Toolele County, Utah. It is about 50 miles southwest of Salt Lake City. The climate of this site is warm and arid with very little precipitation. There are many temperature swings with very hot summers and cold winters. Link to Description of site: <https://www.neonscience.org/field-sites/onaq>
+
+# Table from IMG
+
+```{r}
+read_tsv("data/NEON/exported_img_data.tsv")
+```
+
+# Summary of MAGS
+
+```{r}
+NEON_MAGs_bact_ind <- NEON_MAGs %>% 
+  filter(Domain == "Bacteria") %>% 
+  filter(`Assembly Type` == "Individual") 
+```
+
+```{r}
+NEON_utah <- NEON_MAGs_bact_ind %>%
+  filter(Site== "Great Basin, Onaqui, Utah, USA")
+```
+
+```{r}
+NEON_utah %>% 
+  filter(is.na(Class) | is.na(Order) | is.na(Genus) | is.na(Family) | is.na(Phylum) | is.na(Domain))%>%
+ggplot(aes(x = fct_infreq(Site))) +
+  geom_bar() +
+  coord_flip()
+labs(title = "Number of Novel Bacteria Discovered")
+```
+
+```{r}
+NEON_utah %>%   
+ggplot(aes(x = (`Gene Count`), y = `Total Number of Bases`)) +
+  geom_point() +
+  coord_flip()
+labs(title = "Relationship between MAGs Genome Size and Number of Genes")
+```
+
+```{r}
+NEON_utah %>% 
+ggplot(aes(x = fct_rev(fct_infreq(Phylum)), fill = Subplot)) +
+  geom_bar() +
+  coord_flip()
+labs(title = "MAG Count for each Subplot")
+```
+
+```{r}
+NEON_utah %>% 
+  ggplot(aes(x = fct_infreq(Phylum)))+
+  geom_bar(aes(color = Phylum), position = position_dodge2(width = .9, preserve = "single"))+ coord_flip()
+```
+
+```{r}
+NEON_utah %>%   
+ggplot(aes(x = (`Gene Count`), y = `Total Number of Bases`)) +
+  geom_point() +
+  coord_flip()
+labs(title = "Relationship between MAGs Genome Size and Number of Genes")
+```
+
+```{r}
+NEON_utah %>% 
+  ggplot(aes(x = fct_rev(fct_infreq(Order)), fill = `Family`)) + geom_bar() + coord_flip() + 
+  labs(title = "Family in each order", y = "Count", x = "Order")
+```
+
+# Overview of Class/Phylum
+
+Methylomirabilota, also known as the NC10 Phylum, is a bacterial phylum. These microbes possess a unique metabolic capability to perform anaerobic methane oxidation coupled to nitrite reduction (ANME-2d), a process known as anaerobic methane oxidation (AOM). This metabolic trait is distinctive because it allows them to thrive in environments with low to no oxygen availability, such as certain freshwater and marine sediments, where methane and nitrite coexist.
+
+# Summary of what sites the Phylum/Class is found at
+
+```{r}
+NEON_MAGS_table <- NEON_MAGs_bact_ind %>%
+  filter(Phylum=='Methylomirabilota')
+datatable(
+  NEON_MAGS_table %>%
+  count(Site, sort = TRUE)
+)
+```
+
+```{r}
+NEON_MAGS_table %>% 
+  ggplot(aes(x = fct_rev(fct_infreq(Site)), fill = `Genus`)) + geom_bar() +
+  coord_flip() +
+  labs(title = "Order at each site", y= "Count", x = "Site")
+```
+
+Application written in R [@RCoreTeam] using the Shiny framework [@Chang2015].
+
+# References
