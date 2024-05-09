@@ -1,0 +1,7 @@
+---
+title: "index"
+author: "Toni Lamparski"
+date: "2024-05-09"
+output: html_document
+---
+[Final Project](FinalProject.html)
